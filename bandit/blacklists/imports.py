@@ -239,8 +239,7 @@ def gen_blacklist():
 
     :return: a dictionary mapping node types to a list of blacklist data
     """
-    sets = []
-    sets.append(
+    sets = [
         utils.build_conf_dict(
             "import_telnetlib",
             "B401",
@@ -250,7 +249,7 @@ def gen_blacklist():
             "considered insecure. Use SSH or some other encrypted protocol.",
             "HIGH",
         )
-    )
+    ]
 
     sets.append(
         utils.build_conf_dict(

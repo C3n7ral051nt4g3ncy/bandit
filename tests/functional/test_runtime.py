@@ -11,11 +11,12 @@ class RuntimeTests(testtools.TestCase):
     def _test_runtime(self, cmdlist, infile=None):
         process = subprocess.Popen(
             cmdlist,
-            stdin=infile if infile else subprocess.PIPE,
+            stdin=infile or subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             close_fds=True,
         )
+
         stdout, stderr = process.communicate()
         retcode = process.poll()
         return (retcode, stdout.decode("utf-8"))

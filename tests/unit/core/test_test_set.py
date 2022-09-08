@@ -17,8 +17,7 @@ from bandit.core import test_set
 @test.checks("Str")
 @test.test_id("B000")
 def test_plugin():
-    sets = []
-    sets.append(
+    sets = [
         utils.build_conf_dict(
             "telnet",
             "B401",
@@ -28,7 +27,7 @@ def test_plugin():
             "considered insecure. Use SSH or some other encrypted protocol.",
             "HIGH",
         )
-    )
+    ]
 
     sets.append(
         utils.build_conf_dict(

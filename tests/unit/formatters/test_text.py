@@ -148,7 +148,7 @@ class TextFormatterTests(testtools.TestCase):
                 "binding.py (score: ",
                 "CONFIDENCE: 1",
                 "SEVERITY: 1",
-                "CWE: %s" % str(issue.Cwe(issue.Cwe.MULTIPLE_BINDS)),
+                f"CWE: {str(issue.Cwe(issue.Cwe.MULTIPLE_BINDS))}",
                 "Files excluded (1):",
                 "def.py",
                 "Undefined: 1",
@@ -164,6 +164,7 @@ class TextFormatterTests(testtools.TestCase):
                 "Files skipped (1)",
                 "abc.py (File is bad)",
             ]
+
             for item in expected_items:
                 self.assertIn(item, data)
 

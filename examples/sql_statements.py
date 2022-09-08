@@ -9,7 +9,7 @@ query = """WITH cte AS (SELECT x FROM foo)
 SELECT x FROM cte WHERE x = '%s'""" % identifier
 # bad alternate forms
 query = "SELECT * FROM foo WHERE id = '" + identifier + "'"
-query = "SELECT * FROM foo WHERE id = '{}'".format(identifier)
+query = f"SELECT * FROM foo WHERE id = '{identifier}'"
 
 # bad
 cur.execute("SELECT * FROM foo WHERE id = '%s'" % identifier)
@@ -18,7 +18,7 @@ cur.execute("DELETE FROM foo WHERE id = '%s'" % identifier)
 cur.execute("UPDATE foo SET value = 'b' WHERE id = '%s'" % identifier)
 # bad alternate forms
 cur.execute("SELECT * FROM foo WHERE id = '" + identifier + "'")
-cur.execute("SELECT * FROM foo WHERE id = '{}'".format(identifier))
+cur.execute(f"SELECT * FROM foo WHERE id = '{identifier}'")
 
 # good
 cur.execute("SELECT * FROM foo WHERE id = '%s'", identifier)
@@ -32,7 +32,7 @@ def a():
         pass
     return b
 
-a()("SELECT %s FROM foo" % val)
+a()(f"SELECT {val} FROM foo")
 
 # real world false positives
 choices=[('server_list', _("Select from active instances"))]

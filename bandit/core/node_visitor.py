@@ -68,7 +68,7 @@ class BanditNodeVisitor:
         """
 
         self.context["function"] = node
-        qualname = self.namespace + "." + b_utils.get_func_name(node)
+        qualname = f"{self.namespace}.{b_utils.get_func_name(node)}"
         name = qualname.split(".")[-1]
 
         self.context["qualname"] = qualname
@@ -130,17 +130,13 @@ class BanditNodeVisitor:
             #      name in import_aliases instead of the local definition.
             #      We need better tracking of names.
             if nodename.asname:
-                self.import_aliases[nodename.asname] = (
-                    module + "." + nodename.name
-                )
+                self.import_aliases[nodename.asname] = f"{module}.{nodename.name}"
             else:
                 # Even if import is not aliased we need an entry that maps
                 # name to module.name.  For example, with 'from a import b'
                 # b should be aliased to the qualified name a.b
-                self.import_aliases[nodename.name] = (
-                    module + "." + nodename.name
-                )
-            self.imports.add(module + "." + nodename.name)
+                self.import_aliases[nodename.name] = f"{module}.{nodename.name}"
+            self.imports.add(f"{module}.{nodename.name}")
             self.context["module"] = module
             self.context["name"] = nodename.name
         self.update_scores(self.tester.run_tests(self.context, "ImportFrom"))
@@ -189,10 +185,7 @@ class BanditNodeVisitor:
             self.update_scores(self.tester.run_tests(self.context, "Bytes"))
 
     def pre_visit(self, node):
-        self.context = {}
-        self.context["imports"] = self.imports
-        self.context["import_aliases"] = self.import_aliases
-
+        self.context = {"imports": self.imports, "import_aliases": self.import_aliases}
         if self.debug:
             LOG.debug(ast.dump(node))
             self.metaast.add_node(node, "", self.depth)
@@ -227,7 +220,7 @@ class BanditNodeVisitor:
 
     def visit(self, node):
         name = node.__class__.__name__
-        method = "visit_" + name
+        method = f"visit_{name}"
         visitor = getattr(self, method, None)
         if visitor is not None:
             if self.debug:
@@ -252,10 +245,7 @@ class BanditNodeVisitor:
                 max_idx = len(value) - 1
                 for idx, item in enumerate(value):
                     if isinstance(item, ast.AST):
-                        if idx < max_idx:
-                            item._bandit_sibling = value[idx + 1]
-                        else:
-                            item._bandit_sibling = None
+                        item._bandit_sibling = value[idx + 1] if idx < max_idx else None
                         item._bandit_parent = node
 
                         if self.pre_visit(item):

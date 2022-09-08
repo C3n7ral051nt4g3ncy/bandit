@@ -135,7 +135,7 @@ def _weak_crypto_key_size_cryptography_io(context, config):
             len(context.call_args) > arg_position[key_type]
             and context.call_args[arg_position[key_type]]
         )
-        key_size = curve_key_sizes[curve] if curve in curve_key_sizes else 224
+        key_size = curve_key_sizes.get(curve, 224)
         return _classify_key_size(config, key_type, key_size)
 
 
@@ -146,8 +146,7 @@ def _weak_crypto_key_size_pycrypto(context, config):
         "Cryptodome.PublicKey.DSA.generate": "DSA",
         "Cryptodome.PublicKey.RSA.generate": "RSA",
     }
-    key_type = func_key_type.get(context.call_function_name_qual)
-    if key_type:
+    if key_type := func_key_type.get(context.call_function_name_qual):
         key_size = (
             context.get_call_arg_value("bits")
             or context.get_call_arg_at_position(0)

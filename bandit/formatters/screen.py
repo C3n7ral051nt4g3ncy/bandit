@@ -67,12 +67,11 @@ COLOR = {
 
 
 def header(text, *args):
-    return "{}{}{}".format(COLOR["HEADER"], (text % args), COLOR["DEFAULT"])
+    return f'{COLOR["HEADER"]}{text % args}{COLOR["DEFAULT"]}'
 
 
 def get_verbose_details(manager):
-    bits = []
-    bits.append(header("Files in scope (%i):", len(manager.files_list)))
+    bits = [header("Files in scope (%i):", len(manager.files_list))]
     tpl = "\t%s (score: {SEVERITY: %i, CONFIDENCE: %i})"
     bits.extend(
         [
@@ -86,18 +85,18 @@ def get_verbose_details(manager):
 
 
 def get_metrics(manager):
-    bits = []
-    bits.append(header("\nRun metrics:"))
+    bits = [header("\nRun metrics:")]
     for (criteria, _) in constants.CRITERIA:
         bits.append("\tTotal issues (by %s):" % (criteria.lower()))
-        for rank in constants.RANKING:
-            bits.append(
-                "\t\t%s: %s"
-                % (
-                    rank.capitalize(),
-                    manager.metrics.data["_totals"][f"{criteria}.{rank}"],
-                )
+        bits.extend(
+            "\t\t%s: %s"
+            % (
+                rank.capitalize(),
+                manager.metrics.data["_totals"][f"{criteria}.{rank}"],
             )
+            for rank in constants.RANKING
+        )
+
     return "\n".join([str(bit) for bit in bits])
 
 
@@ -105,48 +104,26 @@ def _output_issue_str(
     issue, indent, show_lineno=True, show_code=True, lines=-1
 ):
     # returns a list of lines that should be added to the existing lines list
-    bits = []
-    bits.append(
-        "%s%s>> Issue: [%s:%s] %s"
-        % (
-            indent,
-            COLOR[issue.severity],
-            issue.test_id,
-            issue.test,
-            issue.text,
-        )
-    )
-
-    bits.append(
-        "%s   Severity: %s   Confidence: %s"
-        % (
-            indent,
-            issue.severity.capitalize(),
-            issue.confidence.capitalize(),
-        )
-    )
+    bits = [
+        f"{indent}{COLOR[issue.severity]}>> Issue: [{issue.test_id}:{issue.test}] {issue.text}",
+        f"{indent}   Severity: {issue.severity.capitalize()}   Confidence: {issue.confidence.capitalize()}",
+    ]
 
     bits.append(f"{indent}   CWE: {str(issue.cwe)}")
 
     bits.append(f"{indent}   More Info: {docs_utils.get_url(issue.test_id)}")
 
     bits.append(
-        "%s   Location: %s:%s:%s%s"
-        % (
-            indent,
-            issue.fname,
-            issue.lineno if show_lineno else "",
-            issue.col_offset if show_lineno else "",
-            COLOR["DEFAULT"],
-        )
+        f'{indent}   Location: {issue.fname}:{issue.lineno if show_lineno else ""}:{issue.col_offset if show_lineno else ""}{COLOR["DEFAULT"]}'
     )
+
 
     if show_code:
         bits.extend(
             [indent + line for line in issue.get_code(lines, True).split("\n")]
         )
 
-    return "\n".join([bit for bit in bits])
+    return "\n".join(list(bits))
 
 
 def get_results(manager, sev_level, conf_level, lines):
@@ -163,28 +140,34 @@ def get_results(manager, sev_level, conf_level, lines):
         if not baseline or len(issues[issue]) == 1:
             bits.append(_output_issue_str(issue, "", lines=lines))
 
-        # otherwise show the finding and the candidates
         else:
-            bits.append(
-                _output_issue_str(
-                    issue, "", show_lineno=False, show_code=False
+            bits.extend(
+                (
+                    _output_issue_str(
+                        issue, "", show_lineno=False, show_code=False
+                    ),
+                    "\n-- Candidate Issues --",
                 )
             )
 
-            bits.append("\n-- Candidate Issues --")
             for candidate in issues[issue]:
-                bits.append(
-                    _output_issue_str(candidate, candidate_indent, lines=lines)
+                bits.extend(
+                    (
+                        _output_issue_str(
+                            candidate, candidate_indent, lines=lines
+                        ),
+                        "\n",
+                    )
                 )
-                bits.append("\n")
+
         bits.append("-" * 50)
 
-    return "\n".join([bit for bit in bits])
+    return "\n".join(list(bits))
 
 
 def do_print(bits):
     # needed so we can mock this stuff
-    print("\n".join([bit for bit in bits]))
+    print("\n".join(list(bits)))
 
 
 @test_properties.accepts_baseline
@@ -203,27 +186,24 @@ def report(manager, fileobj, sev_level, conf_level, lines=-1):
     if IS_WIN_PLATFORM and COLORAMA:
         colorama.init()
 
-    bits = []
     if not manager.quiet or manager.results_count(sev_level, conf_level):
-        bits.append(header("Run started:%s", datetime.datetime.utcnow()))
-
+        bits = [header("Run started:%s", datetime.datetime.utcnow())]
         if manager.verbose:
             bits.append(get_verbose_details(manager))
 
-        bits.append(header("\nTest results:"))
-        bits.append(get_results(manager, sev_level, conf_level, lines))
-        bits.append(header("\nCode scanned:"))
-        bits.append(
-            "\tTotal lines of code: %i"
-            % (manager.metrics.data["_totals"]["loc"])
+        bits.extend(
+            (
+                header("\nTest results:"),
+                get_results(manager, sev_level, conf_level, lines),
+                header("\nCode scanned:"),
+                "\tTotal lines of code: %i"
+                % (manager.metrics.data["_totals"]["loc"]),
+                "\tTotal lines skipped (#nosec): %i"
+                % (manager.metrics.data["_totals"]["nosec"]),
+                get_metrics(manager),
+            )
         )
 
-        bits.append(
-            "\tTotal lines skipped (#nosec): %i"
-            % (manager.metrics.data["_totals"]["nosec"])
-        )
-
-        bits.append(get_metrics(manager))
         skipped = manager.get_skipped()
         bits.append(header("Files skipped (%i):", len(skipped)))
         bits.extend(["\t%s (%s)" % skip for skip in skipped])

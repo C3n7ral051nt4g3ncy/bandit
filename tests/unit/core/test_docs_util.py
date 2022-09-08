@@ -20,7 +20,7 @@ class DocsUtilTests(testtools.TestCase):
         self.assertEqual(expected_url, get_url("B304"))
 
     def test_plugin_call_bib(self):
-        expected_url = self.BASE_URL + "plugins/b101_assert_used.html"
+        expected_url = f"{self.BASE_URL}plugins/b101_assert_used.html"
         self.assertEqual(expected_url, get_url("B101"))
 
     def test_import_call_bib(self):

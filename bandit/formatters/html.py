@@ -300,16 +300,6 @@ pre {
 </div>
 """
 
-    skipped_block = """
-<br>
-<div id="skipped">
-<div class="bordered-box">
-<b>Skipped files:</b><br><br>
-{files_list}
-</div>
-</div>
-"""
-
     metrics_block = """
 <div id="metrics">
     <div class="metrics-box bordered-box">
@@ -327,12 +317,20 @@ pre {
 
     baseline = not isinstance(issues, list)
 
-    # build the skipped string to insert in the report
-    skipped_str = "".join(
+    if skipped_str := "".join(
         f"{fname} <b>reason:</b> {reason}<br>"
         for fname, reason in manager.get_skipped()
-    )
-    if skipped_str:
+    ):
+        skipped_block = """
+<br>
+<div id="skipped">
+<div class="bordered-box">
+<b>Skipped files:</b><br><br>
+{files_list}
+</div>
+</div>
+"""
+
         skipped_text = skipped_block.format(files_list=skipped_str)
     else:
         skipped_text = ""

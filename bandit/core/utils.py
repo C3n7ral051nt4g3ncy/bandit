@@ -34,14 +34,10 @@ def _get_attr_qual_name(node, aliases):
     :returns: Qualified name referred to by the attribute or name.
     """
     if isinstance(node, ast.Name):
-        if node.id in aliases:
-            return aliases[node.id]
-        return node.id
+        return aliases[node.id] if node.id in aliases else node.id
     elif isinstance(node, ast.Attribute):
         name = f"{_get_attr_qual_name(node.value, aliases)}.{node.attr}"
-        if name in aliases:
-            return aliases[name]
-        return name
+        return aliases[name] if name in aliases else name
     else:
         return ""
 
@@ -66,10 +62,7 @@ def get_qual_attr(node, aliases):
     if isinstance(node, ast.Attribute):
         try:
             val = deepgetattr(node, "value.id")
-            if val in aliases:
-                prefix = aliases[val]
-            else:
-                prefix = deepgetattr(node, "value.id")
+            prefix = aliases[val] if val in aliases else deepgetattr(node, "value.id")
         except Exception:
             # NOTE(tkelsey): degrade gracefully when we can't get the fully
             # qualified name for an attr, just return its base name.
@@ -106,10 +99,8 @@ class ProfileNotFound(Exception):
     def __init__(self, config_file, profile):
         self.config_file = config_file
         self.profile = profile
-        message = "Unable to find profile ({}) in config file: {}".format(
-            self.profile,
-            self.config_file,
-        )
+        message = f"Unable to find profile ({self.profile}) in config file: {self.config_file}"
+
         super().__init__(message)
 
 
@@ -145,15 +136,12 @@ def get_module_qualname_from_path(path):
         )
 
     qname = [os.path.splitext(tail)[0]]
-    while head not in ["/", ".", ""]:
-        if os.path.isfile(os.path.join(head, "__init__.py")):
-            (head, tail) = os.path.split(head)
-            qname.insert(0, tail)
-        else:
-            break
-
-    qualname = ".".join(qname)
-    return qualname
+    while head not in ["/", ".", ""] and os.path.isfile(
+        os.path.join(head, "__init__.py")
+    ):
+        (head, tail) = os.path.split(head)
+        qname.insert(0, tail)
+    return ".".join(qname)
 
 
 def namespace_path_join(base, name):
@@ -222,54 +210,53 @@ def linerange(node):
     """Get line number range from a node."""
     if sys.version_info >= (3, 8) and hasattr(node, "lineno"):
         return list(range(node.lineno, node.end_lineno + 1))
-    else:
-        if hasattr(node, "_bandit_linerange_stripped"):
-            lines_minmax = node._bandit_linerange_stripped
-            return list(range(lines_minmax[0], lines_minmax[1] + 1))
+    if hasattr(node, "_bandit_linerange_stripped"):
+        lines_minmax = node._bandit_linerange_stripped
+        return list(range(lines_minmax[0], lines_minmax[1] + 1))
 
-        strip = {
-            "body": None,
-            "orelse": None,
-            "handlers": None,
-            "finalbody": None,
-        }
-        for key in strip.keys():
-            if hasattr(node, key):
-                strip[key] = getattr(node, key)
-                setattr(node, key, [])
+    strip = {
+        "body": None,
+        "orelse": None,
+        "handlers": None,
+        "finalbody": None,
+    }
+    for key in strip:
+        if hasattr(node, key):
+            strip[key] = getattr(node, key)
+            setattr(node, key, [])
 
-        lines_min = 9999999999
-        lines_max = -1
-        if hasattr(node, "lineno"):
-            lines_min = node.lineno
-            lines_max = node.lineno
-        for n in ast.iter_child_nodes(node):
-            lines_minmax = calc_linerange(n)
-            lines_min = min(lines_min, lines_minmax[0])
-            lines_max = max(lines_max, lines_minmax[1])
+    lines_min = 9999999999
+    lines_max = -1
+    if hasattr(node, "lineno"):
+        lines_min = node.lineno
+        lines_max = node.lineno
+    for n in ast.iter_child_nodes(node):
+        lines_minmax = calc_linerange(n)
+        lines_min = min(lines_min, lines_minmax[0])
+        lines_max = max(lines_max, lines_minmax[1])
 
-        for key in strip.keys():
-            if strip[key] is not None:
-                setattr(node, key, strip[key])
+    for key, value in strip.items():
+        if value is not None:
+            setattr(node, key, strip[key])
 
-        if lines_max == -1:
-            lines_min = 0
-            lines_max = 1
+    if lines_max == -1:
+        lines_min = 0
+        lines_max = 1
 
-        node._bandit_linerange_stripped = (lines_min, lines_max)
+    node._bandit_linerange_stripped = (lines_min, lines_max)
 
-        lines = list(range(lines_min, lines_max + 1))
+    lines = list(range(lines_min, lines_max + 1))
 
-        """Try and work around a known Python bug with multi-line strings."""
-        # deal with multiline strings lineno behavior (Python issue #16806)
-        if hasattr(node, "_bandit_sibling") and hasattr(
-            node._bandit_sibling, "lineno"
-        ):
-            start = min(lines)
-            delta = node._bandit_sibling.lineno - start
-            if delta > 1:
-                return list(range(start, node._bandit_sibling.lineno))
-        return lines
+    """Try and work around a known Python bug with multi-line strings."""
+    # deal with multiline strings lineno behavior (Python issue #16806)
+    if hasattr(node, "_bandit_sibling") and hasattr(
+        node._bandit_sibling, "lineno"
+    ):
+        start = min(lines)
+        delta = node._bandit_sibling.lineno - start
+        if delta > 1:
+            return list(range(start, node._bandit_sibling.lineno))
+    return lines
 
 
 def concat_string(node, stop=None):
@@ -340,16 +327,15 @@ def get_path_for_function(f):
     module = sys.modules[module_name]
     if hasattr(module, "__file__"):
         return module.__file__
-    else:
-        LOG.warning("Cannot resolve file path for module %s", module_name)
-        return None
+    LOG.warning("Cannot resolve file path for module %s", module_name)
+    return None
 
 
 def parse_ini_file(f_loc):
     config = configparser.ConfigParser()
     try:
         config.read(f_loc)
-        return {k: v for k, v in config.items("bandit")}
+        return dict(config.items("bandit"))
 
     except (configparser.Error, KeyError, TypeError):
         LOG.warning(
@@ -369,4 +355,4 @@ def check_ast_node(name):
     except AttributeError:  # nosec(tkelsey): catching expected exception
         pass
 
-    raise TypeError("Error: %s is not a valid node type in AST" % name)
+    raise TypeError(f"Error: {name} is not a valid node type in AST")

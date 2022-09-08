@@ -32,5 +32,4 @@ except:
 try:
     a = 1
 except:
-    pass
     a = 2

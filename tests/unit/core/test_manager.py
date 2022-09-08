@@ -29,10 +29,8 @@ class ManagerTests(testtools.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.profile = {}
-        self.profile["include"] = {
-            "any_other_function_with_shell_equals_true",
-            "assert_used",
+        self.profile = {
+            "include": {"any_other_function_with_shell_equals_true", "assert_used"}
         }
 
         self.config = config.BanditConfig()

@@ -60,9 +60,8 @@ def blacklist(context, config):
 
     if node_type.startswith("Import"):
         prefix = ""
-        if node_type == "ImportFrom":
-            if context.node.module is not None:
-                prefix = context.node.module + "."
+        if node_type == "ImportFrom" and context.node.module is not None:
+            prefix = f"{context.node.module}."
 
         for check in blacklists[node_type]:
             for name in context.node.names:

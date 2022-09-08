@@ -82,17 +82,15 @@ class Manager:
         """Validate that everything in the configured profiles looks good."""
         for inc in profile["include"]:
             if not self.check_id(inc):
-                raise ValueError("Unknown test found in profile: %s" % inc)
+                raise ValueError(f"Unknown test found in profile: {inc}")
 
         for exc in profile["exclude"]:
             if not self.check_id(exc):
-                raise ValueError("Unknown test found in profile: %s" % exc)
+                raise ValueError(f"Unknown test found in profile: {exc}")
 
         union = set(profile["include"]) & set(profile["exclude"])
         if len(union) > 0:
-            raise ValueError(
-                "Non-exclusive include/exclude test sets: %s" % union
-            )
+            raise ValueError(f"Non-exclusive include/exclude test sets: {union}")
 
     def check_id(self, test):
         return (

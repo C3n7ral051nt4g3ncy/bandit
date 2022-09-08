@@ -95,12 +95,11 @@ def _evaluate_ast(node):
         statement = node.s
         wrapper = node._bandit_parent._bandit_parent
 
-    if isinstance(wrapper, ast.Call):  # wrapped in "execute" call?
-        names = ["execute", "executemany"]
-        name = utils.get_called_name(wrapper)
-        return (name in names, statement)
-    else:
+    if not isinstance(wrapper, ast.Call):
         return (False, statement)
+    name = utils.get_called_name(wrapper)
+    names = ["execute", "executemany"]
+    return (name in names, statement)
 
 
 @test.checks("Str")

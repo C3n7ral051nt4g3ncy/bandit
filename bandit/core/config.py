@@ -100,10 +100,7 @@ class BanditConfig:
         return cur_item
 
     def get_setting(self, setting_name):
-        if setting_name in self._settings:
-            return self._settings[setting_name]
-        else:
-            return None
+        return self._settings[setting_name] if setting_name in self._settings else None
 
     @property
     def config(self):
@@ -244,9 +241,10 @@ class BanditConfig:
         )
 
         def _test(key, block, exclude, include):
-            if key in exclude or key in include:
-                if self._config.get(block) is None:
-                    raise utils.ConfigError(message.format(key), path)
+            if (key in exclude or key in include) and self._config.get(
+                block
+            ) is None:
+                raise utils.ConfigError(message.format(key), path)
 
         if "profiles" in self._config:
             legacy = True

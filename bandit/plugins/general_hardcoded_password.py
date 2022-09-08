@@ -116,13 +116,15 @@ def hardcoded_password_string(context):
         # looks for "candidate == 'some_string'"
         comp = node._bandit_parent
         if isinstance(comp.left, ast.Name):
-            if RE_CANDIDATES.search(comp.left.id):
-                if isinstance(comp.comparators[0], ast.Str):
-                    return _report(comp.comparators[0].s)
+            if RE_CANDIDATES.search(comp.left.id) and isinstance(
+                comp.comparators[0], ast.Str
+            ):
+                return _report(comp.comparators[0].s)
         elif isinstance(comp.left, ast.Attribute):
-            if RE_CANDIDATES.search(comp.left.attr):
-                if isinstance(comp.comparators[0], ast.Str):
-                    return _report(comp.comparators[0].s)
+            if RE_CANDIDATES.search(comp.left.attr) and isinstance(
+                comp.comparators[0], ast.Str
+            ):
+                return _report(comp.comparators[0].s)
 
 
 @test.checks("Call")
@@ -242,6 +244,9 @@ def hardcoded_password_default(context):
 
     # go through all (param, value)s and look for candidates
     for key, val in zip(context.node.args.args, defs):
-        if isinstance(key, (ast.Name, ast.arg)):
-            if isinstance(val, ast.Str) and RE_CANDIDATES.search(key.arg):
-                return _report(val.s)
+        if (
+            isinstance(key, (ast.Name, ast.arg))
+            and isinstance(val, ast.Str)
+            and RE_CANDIDATES.search(key.arg)
+        ):
+            return _report(val.s)

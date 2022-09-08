@@ -86,9 +86,8 @@ def get_members_value(context):
             arg = keyword.value
             if isinstance(arg, ast.Call):
                 return {"Function": arg.func.id}
-            else:
-                value = arg.id if isinstance(arg, ast.Name) else arg
-                return {"Other": value}
+            value = arg.id if isinstance(arg, ast.Name) else arg
+            return {"Other": value}
 
 
 @test.test_id("B202")

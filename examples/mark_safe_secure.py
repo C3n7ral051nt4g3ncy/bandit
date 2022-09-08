@@ -30,22 +30,22 @@ def try_secure():
 
 
 def format_secure():
-    safestring.mark_safe('<b>{}</b>'.format('secure'))
+    safestring.mark_safe('<b>secure</b>')
     my_secure_str = 'secure'
-    safestring.mark_safe('<b>{}</b>'.format(my_secure_str))
-    safestring.mark_safe('<b>{} {}</b>'.format(my_secure_str, 'a'))
+    safestring.mark_safe(f'<b>{my_secure_str}</b>')
+    safestring.mark_safe(f'<b>{my_secure_str} a</b>')
     safestring.mark_safe('<b>{} {}</b>'.format(*[my_secure_str, 'a']))
     safestring.mark_safe('<b>{b}</b>'.format(b=my_secure_str))  # nosec TODO
     safestring.mark_safe('<b>{b}</b>'.format(**{'b': my_secure_str}))  # nosec TODO
-    my_secure_str = '<b>{}</b>'.format(my_secure_str)
+    my_secure_str = f'<b>{my_secure_str}</b>'
     safestring.mark_safe(my_secure_str)
 
 
 def percent_secure():
-    safestring.mark_safe('<b>%s</b>' % 'secure')
+    safestring.mark_safe('<b>secure</b>')
     my_secure_str = 'secure'
-    safestring.mark_safe('<b>%s</b>' % my_secure_str)
-    safestring.mark_safe('<b>%s %s</b>' % (my_secure_str, 'a'))
+    safestring.mark_safe(f'<b>{my_secure_str}</b>')
+    safestring.mark_safe(f'<b>{my_secure_str} a</b>')
     safestring.mark_safe('<b>%(b)s</b>' % {'b': my_secure_str})  # nosec TODO
 
 
@@ -55,10 +55,8 @@ def with_secure(path):
 
 
 def loop_secure():
-    my_secure_str = ''
+    my_secure_str = ''.join(' Secure' for _ in range(ord(os.urandom(1))))
 
-    for i in range(ord(os.urandom(1))):
-        my_secure_str += ' Secure'
     safestring.mark_safe(my_secure_str)
     while ord(os.urandom(1)) % 2 == 0:
         my_secure_str += ' Secure'

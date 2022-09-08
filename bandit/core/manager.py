@@ -241,19 +241,15 @@ class BanditManager:
                         fname,
                     )
 
-            else:
-                # if the user explicitly mentions a file on command line,
-                # we'll scan it, regardless of whether it's in the included
-                # file types list
-                if _is_file_included(
+            elif _is_file_included(
                     fname,
                     included_globs,
                     excluded_path_globs,
                     enforce_glob=False,
                 ):
-                    files_list.add(fname)
-                else:
-                    excluded_files.add(fname)
+                files_list.add(fname)
+            else:
+                excluded_files.add(fname)
 
         self.files_list = sorted(files_list)
         self.excluded_files = sorted(excluded_files)
@@ -274,7 +270,7 @@ class BanditManager:
         else:
             files = self.files_list
 
-        for count, fname in enumerate(files):
+        for fname in files:
             LOG.debug("working on file : %s", fname)
 
             try:
@@ -307,7 +303,7 @@ class BanditManager:
             self.metrics.count_locs(lines)
             # nosec_lines is a dict of line number -> set of tests to ignore
             #                                         for the line
-            nosec_lines = dict()
+            nosec_lines = {}
             try:
                 fdata.seek(0)
                 tokens = tokenize.tokenize(fdata.readline)
@@ -405,24 +401,15 @@ def _is_file_included(
     :param enforce_glob: Can set to false to bypass extension check
     :return: Boolean indicating whether a file should be included
     """
-    return_value = False
-
-    # if this is matches a glob of files we look at, and it isn't in an
-    # excluded path
-    if _matches_glob_list(path, included_globs) or not enforce_glob:
-        if not _matches_glob_list(path, excluded_path_strings) and not any(
-            x in path for x in excluded_path_strings
-        ):
-            return_value = True
-
-    return return_value
+    return bool(
+        (_matches_glob_list(path, included_globs) or not enforce_glob)
+        and not _matches_glob_list(path, excluded_path_strings)
+        and all(x not in path for x in excluded_path_strings)
+    )
 
 
 def _matches_glob_list(filename, glob_list):
-    for glob in glob_list:
-        if fnmatch.fnmatch(filename, glob):
-            return True
-    return False
+    return any(fnmatch.fnmatch(filename, glob) for glob in glob_list)
 
 
 def _compare_baseline_results(baseline, results):
@@ -492,8 +479,7 @@ def _parse_nosec_comment(comment):
         # lookup tests by short code or name
         for test in NOSEC_COMMENT_TESTS.finditer(nosec_tests):
             test_match = test.group(1)
-            test_id = _find_test_id_from_nosec_string(extman, test_match)
-            if test_id:
+            if test_id := _find_test_id_from_nosec_string(extman, test_match):
                 test_ids.add(test_id)
 
     return test_ids

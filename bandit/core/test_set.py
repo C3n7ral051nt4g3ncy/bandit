@@ -70,8 +70,7 @@ class BanditTestSet:
         if not blacklist:  # not overridden by legacy data
             blacklist = {}
             for node, tests in extman.blacklist.items():
-                values = [t for t in tests if t["id"] in filtering]
-                if values:
+                if values := [t for t in tests if t["id"] in filtering]:
                     blacklist[node] = values
 
         if not blacklist:

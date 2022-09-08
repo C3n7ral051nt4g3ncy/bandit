@@ -18,13 +18,7 @@ class Metrics:
     """
 
     def __init__(self):
-        self.data = dict()
-        self.data["_totals"] = {
-            "loc": 0,
-            "nosec": 0,
-            "skipped_tests": 0,
-        }
-
+        self.data = {"_totals": {"loc": 0, "nosec": 0, "skipped_tests": 0}}
         # initialize 0 totals for criteria and rank; this will be reset later
         for rank in constants.RANKING:
             for criteria in constants.CRITERIA:

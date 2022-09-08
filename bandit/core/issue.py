@@ -37,16 +37,10 @@ class Cwe:
         self.id = id
 
     def link(self):
-        if self.id == Cwe.NOTSET:
-            return ""
-
-        return Cwe.MITRE_URL_PATTERN % str(self.id)
+        return "" if self.id == Cwe.NOTSET else Cwe.MITRE_URL_PATTERN % str(self.id)
 
     def __str__(self):
-        if self.id == Cwe.NOTSET:
-            return ""
-
-        return "CWE-%i (%s)" % (self.id, self.link())
+        return "" if self.id == Cwe.NOTSET else "CWE-%i (%s)" % (self.id, self.link())
 
     def as_dict(self):
         return (
@@ -59,10 +53,7 @@ class Cwe:
         return str(self.as_dict())
 
     def from_dict(self, data):
-        if "id" in data:
-            self.id = int(data["id"])
-        else:
-            self.id = Cwe.NOTSET
+        self.id = int(data["id"]) if "id" in data else Cwe.NOTSET
 
     def __eq__(self, other):
         return self.id == other.id
@@ -178,7 +169,7 @@ class Issue:
 
         if self.fname == "<stdin>":
             self.fdata.seek(0)
-            for line_num in range(1, lmin):
+            for _ in range(1, lmin):
                 self.fdata.readline()
 
         tmplt = "%i\t%s" if tabbed else "%i %s"

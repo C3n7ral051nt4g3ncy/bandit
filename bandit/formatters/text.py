@@ -45,75 +45,60 @@ LOG = logging.getLogger(__name__)
 
 
 def get_verbose_details(manager):
-    bits = []
-    bits.append("Files in scope (%i):" % len(manager.files_list))
     tpl = "\t%s (score: {SEVERITY: %i, CONFIDENCE: %i})"
-    bits.extend(
-        [
+    bits = [
+        "Files in scope (%i):" % len(manager.files_list),
+        *[
             tpl % (item, sum(score["SEVERITY"]), sum(score["CONFIDENCE"]))
             for (item, score) in zip(manager.files_list, manager.scores)
-        ]
-    )
-    bits.append("Files excluded (%i):" % len(manager.excluded_files))
-    bits.extend(["\t%s" % fname for fname in manager.excluded_files])
-    return "\n".join([bit for bit in bits])
+        ],
+        "Files excluded (%i):" % len(manager.excluded_files),
+        *["\t%s" % fname for fname in manager.excluded_files],
+    ]
+
+    return "\n".join(list(bits))
 
 
 def get_metrics(manager):
-    bits = []
-    bits.append("\nRun metrics:")
+    bits = ["\nRun metrics:"]
     for (criteria, _) in constants.CRITERIA:
         bits.append("\tTotal issues (by %s):" % (criteria.lower()))
-        for rank in constants.RANKING:
-            bits.append(
-                "\t\t%s: %s"
-                % (
-                    rank.capitalize(),
-                    manager.metrics.data["_totals"][f"{criteria}.{rank}"],
-                )
+        bits.extend(
+            "\t\t%s: %s"
+            % (
+                rank.capitalize(),
+                manager.metrics.data["_totals"][f"{criteria}.{rank}"],
             )
-    return "\n".join([bit for bit in bits])
+            for rank in constants.RANKING
+        )
+
+    return "\n".join(list(bits))
 
 
 def _output_issue_str(
     issue, indent, show_lineno=True, show_code=True, lines=-1
 ):
     # returns a list of lines that should be added to the existing lines list
-    bits = []
-    bits.append(
-        "%s>> Issue: [%s:%s] %s"
-        % (indent, issue.test_id, issue.test, issue.text)
-    )
-
-    bits.append(
-        "%s   Severity: %s   Confidence: %s"
-        % (
-            indent,
-            issue.severity.capitalize(),
-            issue.confidence.capitalize(),
-        )
-    )
+    bits = [
+        f"{indent}>> Issue: [{issue.test_id}:{issue.test}] {issue.text}",
+        f"{indent}   Severity: {issue.severity.capitalize()}   Confidence: {issue.confidence.capitalize()}",
+    ]
 
     bits.append(f"{indent}   CWE: {str(issue.cwe)}")
 
     bits.append(f"{indent}   More Info: {docs_utils.get_url(issue.test_id)}")
 
     bits.append(
-        "%s   Location: %s:%s:%s"
-        % (
-            indent,
-            issue.fname,
-            issue.lineno if show_lineno else "",
-            issue.col_offset if show_lineno else "",
-        )
+        f'{indent}   Location: {issue.fname}:{issue.lineno if show_lineno else ""}:{issue.col_offset if show_lineno else ""}'
     )
+
 
     if show_code:
         bits.extend(
             [indent + line for line in issue.get_code(lines, True).split("\n")]
         )
 
-    return "\n".join([bit for bit in bits])
+    return "\n".join(list(bits))
 
 
 def get_results(manager, sev_level, conf_level, lines):
@@ -130,22 +115,28 @@ def get_results(manager, sev_level, conf_level, lines):
         if not baseline or len(issues[issue]) == 1:
             bits.append(_output_issue_str(issue, "", lines=lines))
 
-        # otherwise show the finding and the candidates
         else:
-            bits.append(
-                _output_issue_str(
-                    issue, "", show_lineno=False, show_code=False
+            bits.extend(
+                (
+                    _output_issue_str(
+                        issue, "", show_lineno=False, show_code=False
+                    ),
+                    "\n-- Candidate Issues --",
                 )
             )
 
-            bits.append("\n-- Candidate Issues --")
             for candidate in issues[issue]:
-                bits.append(
-                    _output_issue_str(candidate, candidate_indent, lines=lines)
+                bits.extend(
+                    (
+                        _output_issue_str(
+                            candidate, candidate_indent, lines=lines
+                        ),
+                        "\n",
+                    )
                 )
-                bits.append("\n")
+
         bits.append("-" * 50)
-    return "\n".join([bit for bit in bits])
+    return "\n".join(list(bits))
 
 
 @test_properties.accepts_baseline
@@ -159,37 +150,31 @@ def report(manager, fileobj, sev_level, conf_level, lines=-1):
     :param lines: Number of lines to report, -1 for all
     """
 
-    bits = []
-
     if not manager.quiet or manager.results_count(sev_level, conf_level):
-        bits.append("Run started:%s" % datetime.datetime.utcnow())
+        bits = [f"Run started:{datetime.datetime.utcnow()}"]
 
         if manager.verbose:
             bits.append(get_verbose_details(manager))
 
-        bits.append("\nTest results:")
-        bits.append(get_results(manager, sev_level, conf_level, lines))
-        bits.append("\nCode scanned:")
-        bits.append(
-            "\tTotal lines of code: %i"
-            % (manager.metrics.data["_totals"]["loc"])
-        )
-
-        bits.append(
-            "\tTotal lines skipped (#nosec): %i"
-            % (manager.metrics.data["_totals"]["nosec"])
-        )
-        bits.append(
-            "\tTotal potential issues skipped due to specifically being "
-            "disabled (e.g., #nosec BXXX): %i"
-            % (manager.metrics.data["_totals"]["skipped_tests"])
+        bits.extend(
+            (
+                "\nTest results:",
+                get_results(manager, sev_level, conf_level, lines),
+                "\nCode scanned:",
+                "\tTotal lines of code: %i"
+                % (manager.metrics.data["_totals"]["loc"]),
+                "\tTotal lines skipped (#nosec): %i"
+                % (manager.metrics.data["_totals"]["nosec"]),
+                "\tTotal potential issues skipped due to specifically being "
+                "disabled (e.g., #nosec BXXX): %i"
+                % (manager.metrics.data["_totals"]["skipped_tests"]),
+            )
         )
 
         skipped = manager.get_skipped()
-        bits.append(get_metrics(manager))
-        bits.append("Files skipped (%i):" % len(skipped))
+        bits.extend((get_metrics(manager), "Files skipped (%i):" % len(skipped)))
         bits.extend(["\t%s (%s)" % skip for skip in skipped])
-        result = "\n".join([bit for bit in bits]) + "\n"
+        result = "\n".join(list(bits)) + "\n"
 
         with fileobj:
             wrapped_file = utils.wrap_file_object(fileobj)

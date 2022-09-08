@@ -40,8 +40,7 @@ def members_filter(tarfile):
     return result
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-        unsafe_archive_handler(filename)
-        managed_members_archive_handler(filename)
+if __name__ == "__main__" and len(sys.argv) > 1:
+    filename = sys.argv[1]
+    unsafe_archive_handler(filename)
+    managed_members_archive_handler(filename)

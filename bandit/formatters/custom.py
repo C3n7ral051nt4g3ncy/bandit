@@ -140,13 +140,18 @@ def report(manager, fileobj, sev_level, conf_level, template=None):
             params = [field_name, fmt_spec, conversion]
             markers = ["", ":", "!"]
             msg_parsed_template_list.append(
-                ["{"]
-                + [
-                    "%s" % (m + p) if p else ""
-                    for m, p in zip(markers, params)
-                ]
-                + ["}"]
+                (
+                    (
+                        ["{"]
+                        + [
+                            f"{m + p}" if p else ""
+                            for m, p in zip(markers, params)
+                        ]
+                    )
+                    + ["}"]
+                )
             )
+
 
     msg_parsed_template = (
         "".join([item for lst in msg_parsed_template_list for item in lst])

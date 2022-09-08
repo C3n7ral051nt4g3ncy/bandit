@@ -6,7 +6,7 @@ class SomeClass:
 # Possible hardcoded password: 'Admin'
 # Severity: Low   Confidence: Medium
 def someFunction(user, password="Admin"):
-    print("Hi " + user)
+    print(f"Hi {user}")
 
 def someFunction2(password):
     # Possible hardcoded password: 'root'

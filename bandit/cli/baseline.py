@@ -188,9 +188,7 @@ def initialize():
 
     # #################### Setup Output #######################################
     # set the output format, or use a default if not provided
-    output_format = (
-        args.output_format if args.output_format else default_output_format
-    )
+    output_format = args.output_format or default_output_format
 
     if output_format == default_output_format:
         LOG.info("No output format specified, using %s", default_output_format)

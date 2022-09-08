@@ -75,18 +75,13 @@ class BanditTester:
                         result.test_id = test._test_id
 
                     # don't skip the test if there was no nosec comment
-                    if nosec_tests_to_skip is not None:
-                        # if the set is empty or the test id is in the set of
-                        # tests to skip, log and increment the skip by test
-                        # count
-                        if not nosec_tests_to_skip or (
-                            result.test_id in nosec_tests_to_skip
-                        ):
-                            LOG.debug(
-                                "skipped, nosec for test %s" % result.test_id
-                            )
-                            self.metrics.note_skipped_test()
-                            continue
+                    if nosec_tests_to_skip is not None and (
+                        not nosec_tests_to_skip
+                        or (result.test_id in nosec_tests_to_skip)
+                    ):
+                        LOG.debug(f"skipped, nosec for test {result.test_id}")
+                        self.metrics.note_skipped_test()
+                        continue
 
                     self.results.append(result)
 
@@ -149,7 +144,7 @@ class BanditTester:
     @staticmethod
     def report_error(test, context, error):
         what = "Bandit internal error running: "
-        what += "%s " % test
+        what += f"{test} "
         what += "on file %s at line %i: " % (
             context._context["filename"],
             context._context["lineno"],

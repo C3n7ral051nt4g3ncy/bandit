@@ -44,20 +44,24 @@ from bandit.core import test_properties as test
 @test.test_id("B507")
 def ssh_no_host_key_verification(context):
     if (
-        context.is_module_imported_like("paramiko")
-        and context.call_function_name == "set_missing_host_key_policy"
-    ):
-        if context.call_args and context.call_args[0] in [
+        (
+            context.is_module_imported_like("paramiko")
+            and context.call_function_name == "set_missing_host_key_policy"
+        )
+        and context.call_args
+        and context.call_args[0]
+        in [
             "AutoAddPolicy",
             "WarningPolicy",
-        ]:
-            return bandit.Issue(
-                severity=bandit.HIGH,
-                confidence=bandit.MEDIUM,
-                cwe=issue.Cwe.IMPROPER_CERT_VALIDATION,
-                text="Paramiko call with policy set to automatically trust "
-                "the unknown host key.",
-                lineno=context.get_lineno_for_call_arg(
-                    "set_missing_host_key_policy"
-                ),
-            )
+        ]
+    ):
+        return bandit.Issue(
+            severity=bandit.HIGH,
+            confidence=bandit.MEDIUM,
+            cwe=issue.Cwe.IMPROPER_CERT_VALIDATION,
+            text="Paramiko call with policy set to automatically trust "
+            "the unknown host key.",
+            lineno=context.get_lineno_for_call_arg(
+                "set_missing_host_key_policy"
+            ),
+        )

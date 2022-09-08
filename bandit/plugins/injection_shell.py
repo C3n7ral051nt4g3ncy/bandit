@@ -18,10 +18,7 @@ full_path_match = re.compile(r"^(?:[A-Za-z](?=\:)|[\\\/\.])")
 def _evaluate_shell_call(context):
     no_formatting = isinstance(context.node.args[0], ast.Str)
 
-    if no_formatting:
-        return bandit.LOW
-    else:
-        return bandit.HIGH
+    return bandit.LOW if no_formatting else bandit.HIGH
 
 
 def gen_config(name):
@@ -76,9 +73,9 @@ def gen_config(name):
 
 
 def has_shell(context):
-    keywords = context.node.keywords
     result = False
     if "shell" in context.call_keywords:
+        keywords = context.node.keywords
         for key in keywords:
             if key.arg == "shell":
                 val = key.value
@@ -199,29 +196,32 @@ def subprocess_popen_with_shell_equals_true(context, config):
         CWE information added
 
     """  # noqa: E501
-    if config and context.call_function_name_qual in config["subprocess"]:
-        if has_shell(context):
-            if len(context.call_args) > 0:
-                sev = _evaluate_shell_call(context)
-                if sev == bandit.LOW:
-                    return bandit.Issue(
-                        severity=bandit.LOW,
-                        confidence=bandit.HIGH,
-                        cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                        text="subprocess call with shell=True seems safe, but "
-                        "may be changed in the future, consider "
-                        "rewriting without shell",
-                        lineno=context.get_lineno_for_call_arg("shell"),
-                    )
-                else:
-                    return bandit.Issue(
-                        severity=bandit.HIGH,
-                        confidence=bandit.HIGH,
-                        cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                        text="subprocess call with shell=True identified, "
-                        "security issue.",
-                        lineno=context.get_lineno_for_call_arg("shell"),
-                    )
+    if (
+        config
+        and context.call_function_name_qual in config["subprocess"]
+        and has_shell(context)
+        and len(context.call_args) > 0
+    ):
+        sev = _evaluate_shell_call(context)
+        if sev == bandit.LOW:
+            return bandit.Issue(
+                severity=bandit.LOW,
+                confidence=bandit.HIGH,
+                cwe=issue.Cwe.OS_COMMAND_INJECTION,
+                text="subprocess call with shell=True seems safe, but "
+                "may be changed in the future, consider "
+                "rewriting without shell",
+                lineno=context.get_lineno_for_call_arg("shell"),
+            )
+        else:
+            return bandit.Issue(
+                severity=bandit.HIGH,
+                confidence=bandit.HIGH,
+                cwe=issue.Cwe.OS_COMMAND_INJECTION,
+                text="subprocess call with shell=True identified, "
+                "security issue.",
+                lineno=context.get_lineno_for_call_arg("shell"),
+            )
 
 
 @test.takes_config("shell_injection")
@@ -298,16 +298,19 @@ def subprocess_without_shell_equals_true(context, config):
         CWE information added
 
     """  # noqa: E501
-    if config and context.call_function_name_qual in config["subprocess"]:
-        if not has_shell(context):
-            return bandit.Issue(
-                severity=bandit.LOW,
-                confidence=bandit.HIGH,
-                cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                text="subprocess call - check for execution of untrusted "
-                "input.",
-                lineno=context.get_lineno_for_call_arg("shell"),
-            )
+    if (
+        config
+        and context.call_function_name_qual in config["subprocess"]
+        and not has_shell(context)
+    ):
+        return bandit.Issue(
+            severity=bandit.LOW,
+            confidence=bandit.HIGH,
+            cwe=issue.Cwe.OS_COMMAND_INJECTION,
+            text="subprocess call - check for execution of untrusted "
+            "input.",
+            lineno=context.get_lineno_for_call_arg("shell"),
+        )
 
 
 @test.takes_config("shell_injection")
@@ -383,16 +386,19 @@ def any_other_function_with_shell_equals_true(context, config):
         CWE information added
 
     """  # noqa: E501
-    if config and context.call_function_name_qual not in config["subprocess"]:
-        if has_shell(context):
-            return bandit.Issue(
-                severity=bandit.MEDIUM,
-                confidence=bandit.LOW,
-                cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                text="Function call with shell=True parameter identified, "
-                "possible security issue.",
-                lineno=context.get_lineno_for_call_arg("shell"),
-            )
+    if (
+        config
+        and context.call_function_name_qual not in config["subprocess"]
+        and has_shell(context)
+    ):
+        return bandit.Issue(
+            severity=bandit.MEDIUM,
+            confidence=bandit.LOW,
+            cwe=issue.Cwe.OS_COMMAND_INJECTION,
+            text="Function call with shell=True parameter identified, "
+            "possible security issue.",
+            lineno=context.get_lineno_for_call_arg("shell"),
+        )
 
 
 @test.takes_config("shell_injection")
@@ -474,26 +480,29 @@ def start_process_with_a_shell(context, config):
         CWE information added
 
     """  # noqa: E501
-    if config and context.call_function_name_qual in config["shell"]:
-        if len(context.call_args) > 0:
-            sev = _evaluate_shell_call(context)
-            if sev == bandit.LOW:
-                return bandit.Issue(
-                    severity=bandit.LOW,
-                    confidence=bandit.HIGH,
-                    cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                    text="Starting a process with a shell: "
-                    "Seems safe, but may be changed in the future, "
-                    "consider rewriting without shell",
-                )
-            else:
-                return bandit.Issue(
-                    severity=bandit.HIGH,
-                    confidence=bandit.HIGH,
-                    cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                    text="Starting a process with a shell, possible injection"
-                    " detected, security issue.",
-                )
+    if (
+        config
+        and context.call_function_name_qual in config["shell"]
+        and len(context.call_args) > 0
+    ):
+        sev = _evaluate_shell_call(context)
+        if sev == bandit.LOW:
+            return bandit.Issue(
+                severity=bandit.LOW,
+                confidence=bandit.HIGH,
+                cwe=issue.Cwe.OS_COMMAND_INJECTION,
+                text="Starting a process with a shell: "
+                "Seems safe, but may be changed in the future, "
+                "consider rewriting without shell",
+            )
+        else:
+            return bandit.Issue(
+                severity=bandit.HIGH,
+                confidence=bandit.HIGH,
+                cwe=issue.Cwe.OS_COMMAND_INJECTION,
+                text="Starting a process with a shell, possible injection"
+                " detected, security issue.",
+            )
 
 
 @test.takes_config("shell_injection")
@@ -672,23 +681,27 @@ def start_process_with_partial_path(context, config):
 
     """
 
-    if config and len(context.call_args):
-        if (
-            context.call_function_name_qual in config["subprocess"]
-            or context.call_function_name_qual in config["shell"]
-            or context.call_function_name_qual in config["no_shell"]
-        ):
+    if (
+        config
+        and len(context.call_args)
+        and (
+            (
+                context.call_function_name_qual in config["subprocess"]
+                or context.call_function_name_qual in config["shell"]
+                or context.call_function_name_qual in config["no_shell"]
+            )
+        )
+    ):
+        node = context.node.args[0]
+        # some calls take an arg list, check the first part
+        if isinstance(node, ast.List):
+            node = node.elts[0]
 
-            node = context.node.args[0]
-            # some calls take an arg list, check the first part
-            if isinstance(node, ast.List):
-                node = node.elts[0]
-
-            # make sure the param is a string literal and not a var name
-            if isinstance(node, ast.Str) and not full_path_match.match(node.s):
-                return bandit.Issue(
-                    severity=bandit.LOW,
-                    confidence=bandit.HIGH,
-                    cwe=issue.Cwe.OS_COMMAND_INJECTION,
-                    text="Starting a process with a partial executable path",
-                )
+        # make sure the param is a string literal and not a var name
+        if isinstance(node, ast.Str) and not full_path_match.match(node.s):
+            return bandit.Issue(
+                severity=bandit.LOW,
+                confidence=bandit.HIGH,
+                cwe=issue.Cwe.OS_COMMAND_INJECTION,
+                text="Starting a process with a partial executable path",
+            )

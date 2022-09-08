@@ -17,8 +17,7 @@ class DeepAssignation:
     def is_assigned_in(self, items):
         assigned = []
         for ast_inst in items:
-            new_assigned = self.is_assigned(ast_inst)
-            if new_assigned:
+            if new_assigned := self.is_assigned(ast_inst):
                 if isinstance(new_assigned, (list, tuple)):
                     assigned.extend(new_assigned)
                 else:
@@ -27,19 +26,20 @@ class DeepAssignation:
 
     def is_assigned(self, node):
         assigned = False
-        if self.ignore_nodes:
-            if isinstance(self.ignore_nodes, (list, tuple, object)):
-                if isinstance(node, self.ignore_nodes):
-                    return assigned
+        if (
+            self.ignore_nodes
+            and isinstance(self.ignore_nodes, (list, tuple, object))
+            and isinstance(node, self.ignore_nodes)
+        ):
+            return assigned
 
         if isinstance(node, ast.Expr):
             assigned = self.is_assigned(node.value)
         elif isinstance(node, ast.FunctionDef):
             for name in node.args.args:
-                if isinstance(name, ast.Name):
-                    if name.id == self.var_name.id:
-                        # If is param the assignations are not affected
-                        return assigned
+                if isinstance(name, ast.Name) and name.id == self.var_name.id:
+                    # If is param the assignations are not affected
+                    return assigned
             assigned = self.is_assigned_in(node.body)
         elif isinstance(node, ast.With):
             for withitem in node.items:
@@ -62,9 +62,11 @@ class DeepAssignation:
             assigned.extend(self.is_assigned_in(node.body))
             assigned.extend(self.is_assigned_in(node.orelse))
         elif isinstance(node, ast.AugAssign):
-            if isinstance(node.target, ast.Name):
-                if node.target.id == self.var_name.id:
-                    assigned = node.value
+            if (
+                isinstance(node.target, ast.Name)
+                and node.target.id == self.var_name.id
+            ):
+                assigned = node.value
         elif isinstance(node, ast.Assign) and node.targets:
             target = node.targets[0]
             if isinstance(target, ast.Name):
@@ -94,8 +96,7 @@ def evaluate_var(xss_var, parent, until, ignore_nodes=None):
         for node in parent.body:
             if node.lineno >= until:
                 break
-            to = analyser.is_assigned(node)
-            if to:
+            if to := analyser.is_assigned(node):
                 if isinstance(to, ast.Str):
                     secure = True
                 elif isinstance(to, ast.Name):
@@ -130,12 +131,13 @@ def evaluate_var(xss_var, parent, until, ignore_nodes=None):
 def evaluate_call(call, parent, ignore_nodes=None):
     secure = False
     evaluate = False
-    if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute):
-        if isinstance(call.func.value, ast.Str) and call.func.attr == "format":
-            evaluate = True
-            if call.keywords:
-                evaluate = False  # TODO(??) get support for this
-
+    if (
+        isinstance(call, ast.Call)
+        and isinstance(call.func, ast.Attribute)
+        and isinstance(call.func.value, ast.Str)
+        and call.func.attr == "format"
+    ):
+        evaluate = not call.keywords
     if evaluate:
         args = list(call.args)
         num_secure = 0
@@ -165,27 +167,27 @@ def evaluate_call(call, parent, ignore_nodes=None):
 
 
 def transform2call(var):
-    if isinstance(var, ast.BinOp):
-        is_mod = isinstance(var.op, ast.Mod)
-        is_left_str = isinstance(var.left, ast.Str)
-        if is_mod and is_left_str:
-            new_call = ast.Call()
-            new_call.args = []
-            new_call.args = []
-            new_call.keywords = None
-            new_call.lineno = var.lineno
-            new_call.func = ast.Attribute()
-            new_call.func.value = var.left
-            new_call.func.attr = "format"
-            if isinstance(var.right, ast.Tuple):
-                new_call.args = var.right.elts
-            else:
-                new_call.args = [var.right]
-            return new_call
+    if not isinstance(var, ast.BinOp):
+        return
+    is_mod = isinstance(var.op, ast.Mod)
+    is_left_str = isinstance(var.left, ast.Str)
+    if is_mod and is_left_str:
+        new_call = ast.Call()
+        new_call.args = []
+        new_call.args = []
+        new_call.keywords = None
+        new_call.lineno = var.lineno
+        new_call.func = ast.Attribute()
+        new_call.func.value = var.left
+        new_call.func.attr = "format"
+        new_call.args = (
+            var.right.elts if isinstance(var.right, ast.Tuple) else [var.right]
+        )
+
+        return new_call
 
 
 def check_risk(node):
-    description = "Potential XSS on mark_safe function."
     xss_var = node.args[0]
 
     secure = False
@@ -221,6 +223,7 @@ def check_risk(node):
             secure = evaluate_call(new_call, parent)
 
     if not secure:
+        description = "Potential XSS on mark_safe function."
         return bandit.Issue(
             severity=bandit.MEDIUM,
             confidence=bandit.HIGH,

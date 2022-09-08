@@ -28,12 +28,7 @@ def _init_logger(log_level=logging.INFO, log_format=None):
     """
     LOG.handlers = []
 
-    if not log_format:
-        # default log format
-        log_format_string = constants.log_format_string
-    else:
-        log_format_string = log_format
-
+    log_format_string = log_format or constants.log_format_string
     logging.captureWarnings(True)
 
     LOG.setLevel(log_level)
@@ -54,8 +49,10 @@ def _get_options_from_ini(ini_path, target):
 
         for t in target:
             for root, _, filenames in os.walk(t):
-                for filename in fnmatch.filter(filenames, ".bandit"):
-                    bandit_files.append(os.path.join(root, filename))
+                bandit_files.extend(
+                    os.path.join(root, filename)
+                    for filename in fnmatch.filter(filenames, ".bandit")
+                )
 
         if len(bandit_files) > 1:
             LOG.error(
@@ -67,12 +64,8 @@ def _get_options_from_ini(ini_path, target):
 
         elif len(bandit_files) == 1:
             ini_file = bandit_files[0]
-            LOG.info("Found project level .bandit file: %s", bandit_files[0])
-
-    if ini_file:
-        return utils.parse_ini_file(ini_file)
-    else:
-        return None
+            LOG.info("Found project level .bandit file: %s", ini_file)
+    return utils.parse_ini_file(ini_file) if ini_file else None
 
 
 def _init_extensions():
@@ -93,10 +86,8 @@ def _log_option_source(default_val, arg_val, ini_val, option_name):
             return ini_val
         else:
             return None
-    # No value passed to commad line and default value is used
     elif default_val == arg_val:
-        return ini_val if ini_val else arg_val
-    # Certainly a value is passed to commad line
+        return ini_val or arg_val
     else:
         return arg_val
 
@@ -123,8 +114,8 @@ def _get_profile(config, profile_name, config_path):
 
 
 def _log_info(args, profile):
-    inc = ",".join([t for t in profile["include"]]) or "None"
-    exc = ",".join([t for t in profile["exclude"]]) or "None"
+    inc = ",".join(list(profile["include"])) or "None"
+    exc = ",".join(list(profile["exclude"])) or "None"
     LOG.info("profile include tests: %s", inc)
     LOG.info("profile exclude tests: %s", exc)
     LOG.info("cli include tests: %s", args.tests)
@@ -386,9 +377,7 @@ def main():
     ]
     blacklist_info = []
     for a in extension_mgr.blacklist.items():
-        for b in a[1]:
-            blacklist_info.append("{}\t{}".format(b["id"], b["name"]))
-
+        blacklist_info.extend(f'{b["id"]}\t{b["name"]}' for b in a[1])
     plugin_list = "\n\t".join(sorted(set(plugin_info + blacklist_info)))
     dedent_text = textwrap.dedent(
         """
@@ -420,7 +409,7 @@ def main():
     -----------------------------------------------
     """
     )
-    parser.epilog = dedent_text + f"\t{plugin_list}"
+    parser.epilog = f"{dedent_text}\t{plugin_list}"
 
     # setup work - parse arguments, and initialize BanditManager
     args = parser.parse_args()
@@ -432,24 +421,24 @@ def main():
     if args.severity_string is not None:
         if args.severity_string == "all":
             args.severity = 1
+        elif args.severity_string == "high":
+            args.severity = 4
         elif args.severity_string == "low":
             args.severity = 2
         elif args.severity_string == "medium":
             args.severity = 3
-        elif args.severity_string == "high":
-            args.severity = 4
-        # Other strings will be blocked by argparse
+            # Other strings will be blocked by argparse
 
     if args.confidence_string is not None:
         if args.confidence_string == "all":
             args.confidence = 1
+        elif args.confidence_string == "high":
+            args.confidence = 4
         elif args.confidence_string == "low":
             args.confidence = 2
         elif args.confidence_string == "medium":
             args.confidence = 3
-        elif args.confidence_string == "high":
-            args.confidence = 4
-        # Other strings will be blocked by argparse
+            # Other strings will be blocked by argparse
 
     try:
         b_conf = b_config.BanditConfig(config_file=args.config_file)
@@ -457,9 +446,7 @@ def main():
         LOG.error(e)
         sys.exit(2)
 
-    # Handle .bandit files in projects to pass cmdline args from file
-    ini_options = _get_options_from_ini(args.ini_path, args.targets)
-    if ini_options:
+    if ini_options := _get_options_from_ini(args.ini_path, args.targets):
         # prefer command line, then ini file
         args.excluded_paths = _log_option_source(
             parser.get_default("excluded_paths"),

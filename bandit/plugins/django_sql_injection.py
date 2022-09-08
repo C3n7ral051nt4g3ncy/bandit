@@ -10,11 +10,11 @@ from bandit.core import test_properties as test
 
 
 def keywords2dict(keywords):
-    kwargs = {}
-    for node in keywords:
-        if isinstance(node, ast.keyword):
-            kwargs[node.arg] = node.value
-    return kwargs
+    return {
+        node.arg: node.value
+        for node in keywords
+        if isinstance(node, ast.keyword)
+    }
 
 
 @test.checks("Call")
@@ -46,55 +46,55 @@ def django_extra_used(context):
         CWE information added
 
     """  # noqa: E501
-    description = "Use of extra potential SQL attack vector."
-    if context.call_function_name == "extra":
-        kwargs = keywords2dict(context.node.keywords)
-        args = context.node.args
-        if args:
-            if len(args) >= 1:
-                kwargs["select"] = args[0]
-            if len(args) >= 2:
-                kwargs["where"] = args[1]
-            if len(args) >= 3:
-                kwargs["params"] = args[2]
-            if len(args) >= 4:
-                kwargs["tables"] = args[3]
-            if len(args) >= 5:
-                kwargs["order_by"] = args[4]
-            if len(args) >= 6:
-                kwargs["select_params"] = args[5]
-        insecure = False
-        for key in ["where", "tables"]:
-            if key in kwargs:
-                if isinstance(kwargs[key], ast.List):
-                    for val in kwargs[key].elts:
-                        if not isinstance(val, ast.Str):
-                            insecure = True
-                            break
-                else:
-                    insecure = True
-                    break
-        if not insecure and "select" in kwargs:
-            if isinstance(kwargs["select"], ast.Dict):
-                for k in kwargs["select"].keys:
-                    if not isinstance(k, ast.Str):
+    if context.call_function_name != "extra":
+        return
+    kwargs = keywords2dict(context.node.keywords)
+    if args := context.node.args:
+        if len(args) >= 1:
+            kwargs["select"] = args[0]
+        if len(args) >= 2:
+            kwargs["where"] = args[1]
+        if len(args) >= 3:
+            kwargs["params"] = args[2]
+        if len(args) >= 4:
+            kwargs["tables"] = args[3]
+        if len(args) >= 5:
+            kwargs["order_by"] = args[4]
+        if len(args) >= 6:
+            kwargs["select_params"] = args[5]
+    insecure = False
+    for key in ["where", "tables"]:
+        if key in kwargs:
+            if isinstance(kwargs[key], ast.List):
+                for val in kwargs[key].elts:
+                    if not isinstance(val, ast.Str):
                         insecure = True
                         break
-                if not insecure:
-                    for v in kwargs["select"].values:
-                        if not isinstance(v, ast.Str):
-                            insecure = True
-                            break
             else:
                 insecure = True
+                break
+    if not insecure and "select" in kwargs:
+        if isinstance(kwargs["select"], ast.Dict):
+            for k in kwargs["select"].keys:
+                if not isinstance(k, ast.Str):
+                    insecure = True
+                    break
+            if not insecure:
+                for v in kwargs["select"].values:
+                    if not isinstance(v, ast.Str):
+                        insecure = True
+                        break
+        else:
+            insecure = True
 
-        if insecure:
-            return bandit.Issue(
-                severity=bandit.MEDIUM,
-                confidence=bandit.MEDIUM,
-                cwe=issue.Cwe.SQL_INJECTION,
-                text=description,
-            )
+    if insecure:
+        description = "Use of extra potential SQL attack vector."
+        return bandit.Issue(
+            severity=bandit.MEDIUM,
+            confidence=bandit.MEDIUM,
+            cwe=issue.Cwe.SQL_INJECTION,
+            text=description,
+        )
 
 
 @test.checks("Call")
@@ -126,14 +126,16 @@ def django_rawsql_used(context):
         CWE information added
 
     """  # noqa: E501
-    description = "Use of RawSQL potential SQL attack vector."
-    if context.is_module_imported_like("django.db.models"):
-        if context.call_function_name == "RawSQL":
-            sql = context.node.args[0]
-            if not isinstance(sql, ast.Str):
-                return bandit.Issue(
-                    severity=bandit.MEDIUM,
-                    confidence=bandit.MEDIUM,
-                    cwe=issue.Cwe.SQL_INJECTION,
-                    text=description,
-                )
+    if (
+        context.is_module_imported_like("django.db.models")
+        and context.call_function_name == "RawSQL"
+    ):
+        sql = context.node.args[0]
+        if not isinstance(sql, ast.Str):
+            description = "Use of RawSQL potential SQL attack vector."
+            return bandit.Issue(
+                severity=bandit.MEDIUM,
+                confidence=bandit.MEDIUM,
+                cwe=issue.Cwe.SQL_INJECTION,
+                text=description,
+            )

@@ -32,7 +32,7 @@ def except_insecure(cls='" onload="alert(\'xss\')'):
 
 def try_else_insecure(cls='" onload="alert(\'xss\')'):
     try:
-        if 1 == random.randint(0, 1):  # nosec
+        if random.randint(0, 1) == 1:  # nosec
             raise Exception
     except Exception:
         my_insecure_str = 'Secure'
@@ -43,7 +43,7 @@ def try_else_insecure(cls='" onload="alert(\'xss\')'):
 
 def finally_insecure(cls='" onload="alert(\'xss\')'):
     try:
-        if 1 == random.randint(0, 1):  # nosec
+        if random.randint(0, 1) == 1:  # nosec
             raise Exception
     except Exception:
         print("Exception")
@@ -56,7 +56,7 @@ def finally_insecure(cls='" onload="alert(\'xss\')'):
 
 def format_arg_insecure(cls='" onload="alert(\'xss\')'):
     my_insecure_str = insecure_function('insecure', cls=cls)
-    safestring.mark_safe('<b>{} {}</b>'.format(my_insecure_str, 'STR'))
+    safestring.mark_safe(f'<b>{my_insecure_str} STR</b>')
 
 
 def format_startarg_insecure(cls='" onload="alert(\'xss\')'):
@@ -76,12 +76,12 @@ def format_kwargs_insecure(cls='" onload="alert(\'xss\')'):
 
 def percent_insecure(cls='" onload="alert(\'xss\')'):
     my_insecure_str = insecure_function('insecure', cls=cls)
-    safestring.mark_safe('<b>%s</b>' % my_insecure_str)
+    safestring.mark_safe(f'<b>{my_insecure_str}</b>')
 
 
 def percent_list_insecure(cls='" onload="alert(\'xss\')'):
     my_insecure_str = insecure_function('insecure', cls=cls)
-    safestring.mark_safe('<b>%s %s</b>' % (my_insecure_str, 'b'))
+    safestring.mark_safe(f'<b>{my_insecure_str} b</b>')
 
 
 def percent_dict_insecure(cls='" onload="alert(\'xss\')'):
@@ -120,9 +120,11 @@ def also_with_insecure(path):
 
 
 def for_insecure():
-    my_secure_str = ''
-    for i in range(random.randint(0, 1)):  # nosec
-        my_secure_str += insecure_function('insecure', cls='" onload="alert(\'xss\')')
+    my_secure_str = ''.join(
+        insecure_function('insecure', cls='" onload="alert(\'xss\')')
+        for _ in range(random.randint(0, 1))
+    )
+
     safestring.mark_safe(my_secure_str)
 
 

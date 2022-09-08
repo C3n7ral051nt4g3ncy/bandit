@@ -14,10 +14,7 @@ class Context:
         :param context_object: The context object to create class from
         :return: -
         """
-        if context_object is not None:
-            self._context = context_object
-        else:
-            self._context = dict()
+        self._context = context_object if context_object is not None else {}
 
     def __repr__(self):
         """Generate representation of object for printing / interactive use
@@ -34,7 +31,7 @@ class Context:
 
         :return: A string representation of the object
         """
-        return "<Context %s>" % self._context
+        return f"<Context {self._context}>"
 
     @property
     def call_args(self):
@@ -87,13 +84,13 @@ class Context:
         if "call" in self._context and hasattr(
             self._context["call"], "keywords"
         ):
-            return_dict = {}
-            for li in self._context["call"].keywords:
-                if hasattr(li.value, "attr"):
-                    return_dict[li.arg] = li.value.attr
-                else:
-                    return_dict[li.arg] = self._get_literal_value(li.value)
-            return return_dict
+            return {
+                li.arg: li.value.attr
+                if hasattr(li.value, "attr")
+                else self._get_literal_value(li.value)
+                for li in self._context["call"].keywords
+            }
+
         else:
             return None
 
@@ -139,10 +136,7 @@ class Context:
             return val.encode("unicode_escape")
 
         val = self.bytes_val
-        if val is not None:
-            return utils.escaped_bytes_representation(val)
-
-        return None
+        return utils.escaped_bytes_representation(val) if val is not None else None
 
     @property
     def statement(self):
@@ -164,12 +158,11 @@ class Context:
             and hasattr(self._context["node"], "args")
             and hasattr(self._context["node"].args, "defaults")
         ):
-            for default in self._context["node"].args.defaults:
-                defaults.append(
-                    utils.get_qual_attr(
-                        default, self._context["import_aliases"]
-                    )
-                )
+            defaults.extend(
+                utils.get_qual_attr(default, self._context["import_aliases"])
+                for default in self._context["node"].args.defaults
+            )
+
         return defaults
 
     def _get_literal_value(self, literal):
@@ -179,49 +172,41 @@ class Context:
         :return: The value of the AST literal
         """
         if isinstance(literal, ast.Num):
-            literal_value = literal.n
+            return literal.n
 
         elif isinstance(literal, ast.Str):
-            literal_value = literal.s
+            return literal.s
 
         elif isinstance(literal, ast.List):
-            return_list = list()
-            for li in literal.elts:
-                return_list.append(self._get_literal_value(li))
-            literal_value = return_list
+            return [self._get_literal_value(li) for li in literal.elts]
 
         elif isinstance(literal, ast.Tuple):
             return_tuple = tuple()
             for ti in literal.elts:
                 return_tuple = return_tuple + (self._get_literal_value(ti),)
-            literal_value = return_tuple
+            return return_tuple
 
         elif isinstance(literal, ast.Set):
-            return_set = set()
-            for si in literal.elts:
-                return_set.add(self._get_literal_value(si))
-            literal_value = return_set
+            return {self._get_literal_value(si) for si in literal.elts}
 
         elif isinstance(literal, ast.Dict):
-            literal_value = dict(zip(literal.keys, literal.values))
+            return dict(zip(literal.keys, literal.values))
 
         elif isinstance(literal, ast.Ellipsis):
             # what do we want to do with this?
-            literal_value = None
+            return None
 
         elif isinstance(literal, ast.Name):
-            literal_value = literal.id
+            return literal.id
 
         elif isinstance(literal, ast.NameConstant):
-            literal_value = str(literal.value)
+            return str(literal.value)
 
         elif isinstance(literal, ast.Bytes):
-            literal_value = literal.s
+            return literal.s
 
         else:
-            literal_value = None
-
-        return literal_value
+            return None
 
     def get_call_arg_value(self, argument_name):
         """Gets the value of a named argument in a function call.
@@ -242,18 +227,14 @@ class Context:
         found and not matched, None if argument not found at all
         """
         arg_value = self.get_call_arg_value(argument_name)
-        if arg_value is not None:
-            if not isinstance(argument_values, list):
-                # if passed a single value, or a tuple, convert to a list
-                argument_values = list((argument_values,))
-            for val in argument_values:
-                if arg_value == val:
-                    return True
-            return False
-        else:
+        if arg_value is None:
             # argument name not found, return None to allow testing for this
             # eventuality
             return None
+        if not isinstance(argument_values, list):
+                # if passed a single value, or a tuple, convert to a list
+            argument_values = [argument_values]
+        return any(arg_value == val for val in argument_values)
 
     def get_lineno_for_call_arg(self, argument_name):
         """Get the line number for a specific named argument
